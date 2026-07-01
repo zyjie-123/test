@@ -1,0 +1,291 @@
+# 多模态时序预测论文整理
+
+这几篇论文都在做同一件事：用文本信息帮助时序预测。区别主要在三点：
+
+1. 文本来自哪里：历史文本、未来文本、静态描述，还是人为构造的上下文。
+2. 文本怎么进入模型：拼接、cross-attention、作为 prompt，还是直接放进 LLM 问答。
+3. 最终谁负责预测：传统时序模型、扩散模型、LLM，还是多个结果加权融合。
+
+| 论文 | 文本粒度 | 文本时间 | 核心融合方式 | 一句话概括 |
+| --- | --- | --- | --- | --- |
+| TGForecaster | 时间点/预测区间文本 + 通道描述 | 未来文本为主 | 两层 cross-attention | 用通道描述去找相关动态文本，再用文本增强历史时序 |
+| TaTS | 窗口内历史文本 | 历史文本 | 文本向量作为额外变量拼到时序里 | 把文本当作一种有周期特征的辅助时序变量 |
+| Time-MMD / MM-TSFlib | 单条窗口文本 | 主要使用未来文本 | 文本预测结果与时序预测结果加权融合 | 时序模型先预测，文本模型再做修正 |
+| TextFusionHTS | 每条时序一个静态文本 | 静态描述 | 文本 token 对历史 patch 做 cross-attention | 用文本判断哪些历史片段更重要 |
+| MCD-TSF | 窗口内历史文本 | 历史文本 | 扩散模型 + 时间戳注意力 + 文本 cross-attention | 在扩散去噪每一步中融合时间戳和文本 |
+| GPT4MTS | 历史文本 | 历史文本 | soft prompt + GPT-2 self-attention | 把文本和时序 patch 都放进 GPT-2 隐空间预测 |
+| Time-LLM | 自动生成 prompt | 由历史时序生成文本 | 时序 patch 重编程到 LLM 词向量空间 | 让冻结 LLM 处理被改造成“语言 token”的时序 |
+| CIK | 任务上下文文本 | 通常是任务给定上下文 | 直接 prompt LLM | 把时序和文本都写进提示词，让 LLM 输出预测 |
+
+# 1、逐时间点或预测区间文本
+
+这一类方法的文本和具体时间有关。文本可能是每个时间点一段描述，也可能是一个预测区间共享一段描述。
+
+## 1.1、TGForecaster
+
+论文：Beyond Trend and Periodicity: Guiding Time Series Forecasting with Textual Cues  
+代码：https://github.com/VEWOXIC/TGTSF
+
+TGForecaster 用两类文本：
+
+- 通道描述：每个变量自己的静态说明，例如 temperature、humidity、pressure 各自是什么意思。
+- 动态文本：和未来预测区间相关的新闻、天气描述或事件描述。
+
+它的核心是两层 cross-attention。
+
+第一层：通道描述作为 query，动态文本作为 key/value。  
+作用是让每个变量自己去找相关文本。
+
+例如：
+
+- temperature 更应该关注 “temperature is increasing”。
+- humidity 更应该关注 “humidity remains high”。
+- rain 可能关注 “clear sky”，因为这暗示降雨概率低。
+
+第二层：融合后的文本特征作为 query，历史时序作为 key/value。  
+作用是用“带文本信息的通道特征”去选择历史时序里有用的模式，最后输出未来序列。
+
+在 Weather 数据里，动态文本看起来像逐时间点文本，但很多时间点可能来自同一份天气报告，所以内容会重复。实际理解时，可以把它看成“未来预测区间的文本信息被复制到多个时间点”。
+
+![image1.png](论文总结survey.assets/image1.png)
+
+数据构造：
+
+- Toy：作者按规则生成文本。
+- Electricity：作者按星期、工作日、节假日规则生成文本。
+- Weather：作者抓天气报告，再用 GPT-4 生成动态天气文本；通道描述也由列名或 GPT-4 生成。
+- Steam：作者爬 Steam 新闻作为动态文本，游戏自身信息作为通道描述。
+
+主要启发：它适合多变量时序，因为每个变量可以通过通道描述去找自己相关的文本。
+
+主要问题：未来文本依赖较强。如果真实预测场景拿不到未来文本，这类方法就需要改成只用历史文本或可提前获得的计划信息。
+
+## 1.2、TaTS
+
+论文：Language in the Flow of Time: Time-Series-Paired Texts Weaved into a Unified Temporal Narrative  
+代码：https://github.com/iDEA-iSAIL-Lab-UIUC/TaTS
+
+TaTS 的思路比较直接：把历史文本编码成向量，然后把文本向量接到时序输入里，让时序模型一起处理。
+
+流程是：
+
+1. 历史文本经过 TinyBERT 编码。
+2. 文本向量被当作额外变量，拼到原始时序变量后面。
+3. 扩展后的输入交给基础时序模型预测未来。
+4. 预测结果再和 `prior_history_avg` 加权融合。
+
+这里的 `prior_history_avg` 不是未来真值，而是从历史窗口中算出来的先验均值。它提供一个简单的历史基准，模型预测是在这个基准上做调整。
+
+![image2.png](论文总结survey.assets/image2.png)
+
+论文还提出 TT 方法，用余弦相似度比较文本变化和时序变化是否有相似周期。它想证明：文本不是纯噪声，文本也可能有时间规律。
+
+主要启发：文本可以不只作为一句解释，而是可以转成随时间变化的辅助变量。
+
+主要问题：把文本向量直接拼成变量，融合方式比较粗。模型不一定真的理解文本语义，只是学习文本向量和数值之间的相关性。
+
+# 2、窗口级文本：最接近普通多模态预测
+
+这一类方法把一个历史窗口或预测窗口配一段文本。它们更像我们要做的数据组织方式：一行样本对应一段历史时序、一段未来时序、一段文本。
+
+## 2.1、Time-MMD / MM-TSFlib
+
+论文：Time-MMD: A New Multi-Domain Multimodal Dataset for Time Series Analysis  
+代码：https://github.com/AdityaLab/MM-TSFlib
+
+Time-MMD 提供多领域的时序和文本数据。MM-TSFlib 中的模型思路是：时序模型和文本模型分开预测，最后融合。
+
+流程是：
+
+1. 历史时序输入时序模型，得到未来预测 `outputs`。
+2. 文本经过 BERT 编码，再经过 MLP 映射成 `prompt_emb`。
+3. `prompt_emb` 经过归一化后加上 `prior_y`，得到文本侧预测 `prompt_y`。
+4. 最终预测是：
+
+```text
+outputs = (1 - prompt_weight) * outputs + prompt_weight * prompt_y
+```
+
+如果不用 attention，就对所有 `prompt_emb_i` 做平均池化。  
+如果用 attention，就用时序预测结果给每个 `prompt_emb_i` 打分，再加权求和得到新的文本预测向量。
+
+这里的 `prompt_emb_i` 不是原始分词 token，而是 BERT token hidden state 经过 MLP 映射后的文本向量。
+
+`prior_y` 是从历史同周期数据中得到的先验，例如：
+
+- 月度数据：上一年同月值，或历史同月均值。
+- 周度数据：上一年同周值，或历史同周均值。
+- 日度数据：历史同日、同星期或季节窗口均值。
+
+![image3.png](论文总结survey.assets/image3.png)
+
+数据集包括 Agriculture、Climate、Economy、Security、Social、Traffic、Energy、Health、Environment。
+
+主要启发：可以把文本看作一个“修正器”，不让文本完全决定预测。
+
+主要问题：如果文本只取预测起点的一条文本，那么它对长预测窗口的信息可能不够。
+
+## 2.2、TextFusionHTS
+
+论文：Unveiling the Potential of Text in High-Dimensional Time Series Forecasting  
+代码：https://github.com/xinzzzhou/TextFusionHTS
+
+TextFusionHTS 处理高维时序。它的数据不是每个窗口都有动态文本，而是每条时序有一个固定静态文本。
+
+两个数据集：
+
+- Wiki-People：每个维基百科词条是一条时序，数值是页面访问量，文本是页面内容。
+- News：每篇新闻是一条时序，数值是社交反馈随时间变化，文本是新闻正文。
+
+模型流程是：
+
+1. 用 Llama-3.1-8B 编码原始文本，得到文本 token 向量。
+2. 用 PatchTST 编码历史时序，得到多个时序 patch 表征。
+3. 文本 token 作为 query，时序 patch 作为 key/value 做 cross-attention。
+4. 文本根据语义去选择重要的历史 patch，融合后再预测未来。
+
+![image4.png](论文总结survey.assets/image4.png)
+
+它的 attention 方向和很多方法相反：不是时序去看文本，而是文本去看时序 patch。
+
+主要启发：静态文本可以用来选择历史片段。例如一个新闻主题可能决定哪些反馈阶段更重要。
+
+主要问题：文本是静态的，不描述未来变化。它更像“变量说明”或“对象描述”，不是事件预告。
+
+## 2.3、MCD-TSF
+
+论文：Multimodal Conditioned Diffusive Time Series Forecasting  
+代码：https://github.com/synlp/MCD-TSF
+
+MCD-TSF 是扩散模型版本的多模态时序预测。它使用历史时序、时间戳和历史文本一起预测未来。
+
+整体流程是：
+
+1. 未来序列先从噪声开始。
+2. 扩散模型一步步去噪，逐步生成未来时序。
+3. 每一步去噪时，都用历史时序、时间戳和文本作为条件。
+
+它有两个关键模块：
+
+第一，TAA：Timestamp-Assisted Attention。  
+它把时间戳特征和时序值一起放进时间维 attention。模型判断两个时间点是否相关时，不只看数值，也看月份、星期、日期等时间结构。
+
+第二，TTF：Text-Time Series Fusion。  
+它用时序隐状态作为 query，文本 hidden state 作为 key/value 做 cross-attention。作用是让每个时序位置去文本里找有用语义。
+
+![image5.png](论文总结survey.assets/image5.png)
+
+MCD-TSF 使用 Time-MMD 的 8 个领域数据：Agriculture、Climate、Economy、Energy、Environment、Health、SocialGood、Traffic。代码中默认文本编码器是冻结 BERT。
+
+主要启发：文本不直接输出预测值，而是在扩散去噪过程中反复影响预测。
+
+主要问题：模型复杂，训练成本高；文本影响由 CFG 控制，但文本到底如何稳定改进预测，还需要看具体数据质量。
+
+# 3、把时序映射到语言模型空间
+
+这一类方法借用 LLM 的序列建模能力。它们的共同点是：把时序 patch 变成 LLM 可以处理的 embedding，再让 LLM 参与预测。
+
+## 3.1、GPT4MTS
+
+论文：GPT4MTS: Prompt-Based Large Language Model for Multimodal Time-Series Forecasting  
+代码：https://github.com/Flora-jia-jfr/GPT4MTS-Prompt-based-Large-Language-Model-for-Multimodal-Time-series-Forecasting
+
+GPT4MTS 用 GDELT 新闻事件数据预测未来事件热度，例如提及次数、文章数量、信源数量。
+
+流程是：
+
+1. 历史文本经过 BERT 编码。
+2. 文本向量被压缩成 soft prompt。
+3. 历史时序被切成 patch，并映射到和 GPT-2 hidden size 对齐的向量。
+4. soft prompt 和时序 patch token 拼在一起送入 GPT-2。
+5. GPT-2 输出后，只取时序部分 hidden states，再用线性层预测未来时序。
+
+![image6.png](论文总结survey.assets/image6.png)
+
+这里的 soft prompt 可以理解成“不是人写的提示词，而是模型学出来的一组文本提示向量”。它不直接可读，但能影响 GPT-2 的注意力。
+
+主要启发：让文本 token 和时序 patch token 在同一个 Transformer 里相互注意。
+
+主要问题：历史文本和时序都被压缩成少量 token，原始文本长度和数值细节会丢失一部分。
+
+## 3.2、Time-LLM
+
+论文：Time-LLM: Time Series Forecasting by Reprogramming Large Language Models  
+代码：https://github.com/KimMeen/Time-LLM
+
+Time-LLM 的文本不是外部新闻或报告，而是根据历史时序自动生成的 prompt。它更像“把时序描述成一段任务说明”，再交给冻结 LLM。
+
+流程是：
+
+1. 历史时序切成 patch。
+2. patch embedding 和 LLM 词向量原型做 cross-attention。
+3. 得到 LLM 可以理解的 reprogrammed patch embedding。
+4. 自动生成的文本 prompt embedding 和 patch embedding 拼接。
+5. 输入冻结 LLM，最后取时序部分 hidden states 预测未来。
+
+![image7.png](论文总结survey.assets/image7.png)
+
+使用的数据集包括 ETTh1、ETTh2、ETTm1、ETTm2、Weather、Electricity、Traffic、ILI。
+
+主要启发：不用训练整个 LLM，只学习一个把时序映射到语言空间的接口。
+
+主要问题：文本主要来自历史时序统计描述，不是外部事件信息。因此它增强的更多是“格式和先验”，不是额外知识。
+
+# 4、把时序和文本都写进 prompt
+
+这一类方法不训练专门模型，而是把任务写成自然语言，让 LLM 直接回答。
+
+## 4.1、CIK
+
+论文：Context is Key: A Benchmark for Forecasting with Essential Textual Information  
+代码：https://github.com/ServiceNow/context-is-key-forecasting
+
+CIK 的重点不是提出一个新模型，而是提出一个测试基准：很多预测任务必须依赖文本上下文，只看历史数值会预测错。
+
+它覆盖 7 类场景：
+
+- Climatology
+- Economics
+- Energy
+- Mechanics
+- Public Safety
+- Transportation
+- Retail
+
+每个样本包含：
+
+1. 历史时序。
+2. 未来要预测的时间点。
+3. 必须阅读的文本上下文，例如政策、节假日、突发事件、物理约束等。
+
+模型使用方式很直接：把历史时序和文本都写进 prompt，让 LLM 输出未来预测值。
+
+主要启发：有些时序变化在历史数值里看不出来，必须靠文本解释。
+
+主要问题：依赖 LLM 的推理和格式遵循能力，不是一个可控的端到端时序模型。
+
+# 5、对我们工作的启发
+
+如果目标是做“历史窗口时序 + 文本 -> 未来窗口时序”，最接近的是 Time-MMD/MM-TSFlib、MCD-TSF、TaTS 和 TextFusionHTS。
+
+可以借鉴的方向：
+
+1. 文本粒度要先定清楚：每个时间点一段文本、每个窗口一段文本，还是每条时序一个静态描述。
+2. 文本最好不要直接主导预测，可以作为修正项或 attention 条件。
+3. 如果文本是未来文本，必须说明真实预测时是否可获得，否则容易变成信息泄露。
+4. 如果文本是历史文本，重点是让模型学到“哪些历史事件会影响未来”。
+5. 多变量任务中，通道描述很有用。它能告诉模型每个变量应该关注哪类文本。
+
+一个更稳的实现路线是：
+
+```text
+历史时序窗口
++ 历史文本窗口
++ 通道描述
+-> 文本编码
+-> 时序编码
+-> cross-attention 融合
+-> 预测未来时序
+```
+
+这样既保留数值时序，又能利用文本语义，而且不会依赖不可获得的未来文本。
