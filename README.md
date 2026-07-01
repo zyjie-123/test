@@ -43,7 +43,7 @@ TGForecaster 用两类文本：
 - humidity 更应该关注 “humidity remains high”。
 - rain 可能关注 “clear sky”，因为这暗示降雨概率低。
 
-第二层：第一层融合后的文本特征作为 query，历史时序作为 key/value。
+第二层：第一层融合后的文本特征作为 query，历史时序作为 key/value。  
 
 作用是用“带未来窗口文本信息的通道特征”去选择历史时序里有用的模式，最后输出未来序列。
 
