@@ -10,12 +10,12 @@
 | 论文 | 文本粒度 | 文本时间 | 核心融合方式 | 一句话概括 | 期刊 |
 | --- | --- | --- | --- | --- | --- |
 | TGForecaster | 时间点/预测区间动态文本 + 通道描述 | 未来文本+通道描述 | 两层 cross-attention | 用通道描述去找相关动态文本，再用融合文本增强历史时序 | 无 |
-| TaTS | 时间戳历史文本 | 历史文本 | 文本向量作为额外变量拼到时序里 | 把文本当作一种有周期特征的辅助时序变量 | ICLR 2026 |
-| Time-MMD / MM-TSFlib | 单条窗口文本 | 未来起点文本 | 文本预测结果与时序预测结果加权融合 | 时序模型先预测，文本模型再做修正 | NeurIPS 2024 |
-| TextFusionHTS | 每条时序一个静态文本 | 静态描述 | 文本 token 对历史 patch 做 cross-attention | 用文本判断哪些历史片段更重要 | NeurIPS 2024 |
+| TaTS | 时间戳历史文本 | 历史文本 | 文本向量作为额外变量拼到时序里 | 把文本当作一种有周期特征的辅助时序变量 | ICLR 26 |
+| Time-MMD / MM-TSFlib | 单条窗口文本 | 未来起点文本 | 文本预测结果与时序预测结果加权融合 | 时序模型先预测，文本模型再做修正 | NeurIPS 24 |
+| TextFusionHTS | 每条时序一个静态文本 | 静态描述 | 文本 token 对历史 patch 做 cross-attention | 用文本判断哪些历史片段更重要 | NeurIPS 24 |
 | MCD-TSF | 时间戳历史文本 | 历史文本 | 扩散模型 + 时间戳注意力 + 文本 cross-attention | 在扩散去噪每一步中融合时间戳和文本 | 无 |
-| GPT4MTS | 时间戳历史文本 | 历史文本 | soft prompt + GPT-2 self-attention | 把文本和时序 patch 都放进 GPT-2 隐空间预测 | AAAI 2024 |
-| Time-LLM | 自动生成 prompt | 由历史时序生成文本 | 时序 patch 重编码到 LLM 词向量空间 | 让冻结 LLM 处理被改造成“语言 token”的时序 | ICLR 2024 |
+| GPT4MTS | 时间戳历史文本 | 历史文本 | soft prompt + GPT-2 self-attention | 把文本和时序 patch 都放进 GPT-2 隐空间预测 | AAAI 24 |
+| Time-LLM | 自动生成 prompt | 由历史时序生成文本 | 时序 patch 重编码到 LLM 词向量空间 | 让冻结 LLM 处理被改造成“语言 token”的时序 | ICLR 24 |
 | CIK | 任务上下文文本 | 任务给定上下文 | 直接 prompt LLM | 把时序和文本都写进提示词，让 LLM 输出预测 | ICLR 2026 |
 
 # 1、逐时间点
