@@ -32,7 +32,7 @@ TGForecaster 用两类文本：
 - 通道描述：模型是多变量预测模型，每个变量自己的静态说明，例如 temperature、humidity、pressure 各自是什么意思。
 - 动态文本：和未来预测区间相关的新闻、天气描述或事件描述。
 
-特点：用两层cross-attention依次找通道文本和动态文本、融合文本和时序关系。 
+特点：用两层cross-attention依次找通道文本和动态文本、融合文本和时序关系。   
 `seq_len = 288,pred_len = 96,patch_len = 6,stride = 3,text_dim = 768,d_model = 768,变量数 C = 21`  
 第一层：通道描述作为 query，未来窗口动态文本作为 key/value，得到每个变量对应的文本特征。过程：  
 `（[batch, 32, 21, 768]，[batch, 32, 7, 768]）——>[batch, 32, 21, 768]`  
