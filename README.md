@@ -156,7 +156,7 @@ outputs = (1 - prompt_weight) * outputs + prompt_weight * prompt_y
 - 日度数据：历史同日、同星期或季节窗口均值。
 
 ![image3-1.png](survey.assets/image3-1.png)
-![image3-2.png](survey.assets/image3-2.png)
+![image3-2.png](./survey.assets/image3-2.png)
 
 数据集包括 Agriculture、Climate、Economy、Security、Social、Traffic、Energy、Health、Environment。  
 动机：MM-TSFlib 既便于基于 Time-MMD 开展多模态 TSA，也可作为评估现有 TSF 模型多模态可扩展性的先导工具。  
