@@ -48,8 +48,8 @@ TGForecaster 用两类文本：
 `[batch, 32, 21, 768]->[batch, 32, 21, 6]->[batch, 96, 21]`    
 在 Weather 数据里，动态文本看起来像逐时间点文本，但很多时间点可能来自同一份天气报告（时序粒度是10分钟，文本粒度是6小时），所以内容会重复。实际理解时，可以把它看成“未来预测区间的文本信息被复制到多个时间点”。    
 
-![image1.png](survey.assets/image1.png)  
-
+![image1.png](./survey.assets/image1.png)  
+<img alt="intro" src="survey.assets/image1.png" width="50%"/>
 
 数据构造：
 
