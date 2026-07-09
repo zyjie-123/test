@@ -201,7 +201,7 @@ TextFusionHTS 处理高维时序。它的数据不是每个窗口都有动态文
 模型流程是：
 
 1. 用 Llama-3.1-8B 编码原始文本，得到文本 token 向量：`[batch,text_len,1]->[batch,4096]->[batch,1,768]`。
-2. 用 PatchTST 编码历史时序，得到多个时序 patch 表征：`[batch,seq_len,1]->[batch, 1, 7, 128]`。
+2. 用 PatchTST 编码器编码历史时序，得到多个时序 patch 表征：`[batch,seq_len,1]->[batch, 1, 7, 128]`。
 3. 文本 token 作为 query，时序 patch 作为 key/value 做 cross-attention：`（[batch,1,768],[batch, 1, 7, 128]）->[batch,1,128]->[batch,pred_len,1]`。
 4. 文本根据语义去选择重要的历史 patch，对多个历史片段特征 patch 加权求和。
 5. 使用融合特征经过线性层输出未来预测。  
