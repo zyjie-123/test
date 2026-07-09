@@ -1,7 +1,5 @@
 # 多模态时序预测论文整理
 
-![image1.png](./survey.assets/image1.png)  
-![image1.png](survey.assets/image1.png)  
 
 当前已发表的多模态时序预测模型论文的关注点和区别主要在：
 
