@@ -197,13 +197,13 @@ TextFusionHTS 处理高维时序。它的数据不是每个窗口都有动态文
 - Wiki-People：每个维基百科词条是一条时序，数值是页面访问量，文本是页面内容。
 - News：每篇新闻是一条时序，数值是社交反馈随时间变化，文本是新闻正文。  
 文本是一个固定静态文本，所有窗口的文本都一样，不预示未来，可以看做的对本变量的描述，通道独立。
-
+变量数 C = 21,patch_num=7。  
 模型流程是：
 
-1. 用 Llama-3.1-8B 编码原始文本，得到文本 token 向量。
-2. 用 PatchTST 编码历史时序，得到多个时序 patch 表征。
-3. 文本 token 作为 query，时序 patch 作为 key/value 做 cross-attention。
-4. 文本根据语义去选择重要的历史 patch，对多个历史片段特征 patch 候选项加权求和。
+1. 用 Llama-3.1-8B 编码原始文本，得到文本 token 向量：`[batch,text_len,1]->[batch,4096]->[batch,1,768]`。
+2. 用 PatchTST 编码历史时序，得到多个时序 patch 表征：`[batch,seq_len,1]->[batch, 1, 7, 128]`。
+3. 文本 token 作为 query，时序 patch 作为 key/value 做 cross-attention：`（[batch,1,768],[batch, 1, 7, 128]）->[batch,1,128]->[batch,pred_len,1]`。
+4. 文本根据语义去选择重要的历史 patch，对多个历史片段特征 patch 加权求和。
 5. 使用融合特征经过线性层输出未来预测。  
 即用文本向量去给历史时序 patch 打分，选择哪些时序片段更重要，然后生成融合后的预测表征去预测未来。  
 
