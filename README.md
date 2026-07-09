@@ -153,7 +153,7 @@ outputs = (1 - prompt_weight) * outputs + prompt_weight * prompt_y
 - 周度数据：上一年同周值，或历史同周均值。
 - 日度数据：历史同日、同星期或季节窗口均值。
 
-![image3-1.png](论文总结survey.assets/image3-1.png)
+![image3-1.png](./论文总结survey.assets/image3-1.png)
 ![image3-2.png](论文总结survey.assets/image3-2.png)
 
 数据集包括 Agriculture、Climate、Economy、Security、Social、Traffic、Energy、Health、Environment。
