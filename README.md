@@ -16,7 +16,7 @@
 | MCD-TSF | 时间戳历史文本 | 历史文本 | 扩散模型 + 时间戳注意力 + 文本 cross-attention | 在扩散去噪每一步中融合时间戳和文本 | 无 |
 | GPT4MTS | 时间戳历史文本 | 历史文本 | soft prompt + GPT-2 self-attention | 把文本和时序 patch 都放进 GPT-2 隐空间预测 | AAAI 2024 |
 | Time-LLM | 自动生成 prompt | 由历史时序生成文本 | 时序 patch 重编码到 LLM 词向量空间 | 让冻结 LLM 处理被改造成“语言 token”的时序 | ICLR 2024 |
-| CIK | 任务上下文文本 | 任务给定上下文 | 直接 prompt LLM | 把时序和文本都写进提示词，让 LLM 输出预测 | ICLR 2026 |
+| CIK | 任务上下文文本 | 任务给定上下文 | 直接 prompt LLM | 把时序和文本都写进提示词，让 LLM 输出预测 | ICLR 2026 | 
 
 # 1、逐时间点
 
